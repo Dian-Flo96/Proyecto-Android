@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<item
+    android:id="@+id/firstFragment"
+    android:icon="@drawable/baseline_home_24"
+    android:title="INICIO">50sp</item>
+    />
+
+    <item
+        android:id="@+id/secondFragment"
+        android:icon="@drawable/outline_add_shopping_cart_24"
+        android:title="PROMOCIONES"
+        />
+
+    <item
+        android:id="@+id/thirdFragment"
+        android:icon="@drawable/outline_attach_money_24"
+        android:title="AHORRO"
+        />
+
+
+
+</menu>
