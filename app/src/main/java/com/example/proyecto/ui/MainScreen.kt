@@ -1,20 +1,21 @@
-package com.example.proyecto.ui // <<<< Ensure this is the package for MainScreen
+package com.example.proyecto.ui // Assuming MainScreen.kt is in ui package
 
+import AhorroScreen
 import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.*
+import androidx.compose.material3.* // Keep Material 3 imports
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview // For @Preview
+import androidx.compose.ui.graphics.vector.ImageVector // Keep this
+import androidx.compose.ui.res.painterResource // Keep this
+import androidx.compose.ui.tooling.preview.Preview // Keep this
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -23,7 +24,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.proyecto.R // For R.drawable resources
+import com.example.proyecto.R // Keep this
 import com.example.proyecto.data.dao.TransactionDao
 import com.example.proyecto.data.model.Transaction
 import com.example.proyecto.data.repository.TransactionRepository
@@ -31,7 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import java.util.Date
 
-// Sealed class for navigation routes
+// Sealed class for navigation routes (stays in MainScreen.kt or could be moved to a Navigation.kt file)
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null, val iconResId: Int? = null) {
     object Inicio : Screen("inicio", "INICIO", iconResId = R.drawable.baseline_home_24)
     object Promociones : Screen("promociones", "PROMOCIONES", iconResId = R.drawable.outline_add_shopping_cart_24)
@@ -44,9 +45,9 @@ val navItems = listOf(
     Screen.Ahorro
 )
 
-@OptIn(ExperimentalMaterial3Api::class) // Added OptIn for Scaffold if not present
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: MainViewModel) { // viewModel comes from com.example.proyecto.ui.MainViewModel
+fun MainScreen(viewModel: MainViewModel) {
     val navController = rememberNavController()
     Scaffold(
         bottomBar = {
@@ -54,7 +55,6 @@ fun MainScreen(viewModel: MainViewModel) { // viewModel comes from com.example.p
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
-            // Ensure viewModel IS being used here by passing to NavigationGraph
             NavigationGraph(navController = navController, viewModel = viewModel)
         }
     }
@@ -100,7 +100,9 @@ fun NavigationGraph(navController: NavHostController, viewModel: MainViewModel) 
             PromocionesScreen(viewModel = viewModel)
         }
         composable(Screen.Ahorro.route) {
-            AhorroScreen(viewModel = viewModel)
+            // AhorroScreen is now called from here, it will be imported
+            // from com.example.proyecto.ui.AhorroScreen
+            AhorroScreen(viewModel = viewModel) // This should now correctly call the one in AhorroScreen.kt
         }
     }
 }
@@ -123,7 +125,7 @@ fun InicioScreen(viewModel: MainViewModel) {
             viewModel.addTransaction(
                 tipo = "Ingreso",
                 categoria = "Salario",
-                fecha = Date().time, // Current time as Long
+                fecha = Date().time,
                 monto = 2000.0,
                 descripcion = "Monthly Salary"
             )
@@ -134,7 +136,7 @@ fun InicioScreen(viewModel: MainViewModel) {
             viewModel.addTransaction(
                 tipo = "Gasto",
                 categoria = "Alimentos",
-                fecha = Date().time, // Current time as Long
+                fecha = Date().time,
                 monto = 50.0,
                 descripcion = "Groceries"
             )
@@ -154,26 +156,14 @@ fun PromocionesScreen(viewModel: MainViewModel) {
     }
 }
 
-@Composable
-fun AhorroScreen(viewModel: MainViewModel) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Ahorro Screen - Content will be here")
-    }
-}
-
 // --- Preview Setup ---
-
-// Fake DAO for preview - place this within MainScreen.kt or its own file if preferred
-class FakeTransactionDaoPreview : TransactionDao { // Renamed to avoid clash if another FakeTransactionDao exists
+class FakeTransactionDaoPreview : TransactionDao {
     override suspend fun insert(transaction: Transaction) {}
     override suspend fun update(transaction: Transaction) {}
     override suspend fun delete(transaction: Transaction) {}
     override fun getTransactionById(id: Long): Flow<Transaction?> = flowOf(null)
     override fun getAllTransactions(): Flow<List<Transaction>> = flowOf(
-        listOf( // Sample data for preview
+        listOf(
             Transaction(id = 1, tipo = "Ingreso", categoria = "Salario Preview", fecha = Date().time, monto = 2500.0, descripcion = "Preview Salary"),
             Transaction(id = 2, tipo = "Gasto", categoria = "Comida Preview", fecha = Date().time, monto = 75.0, descripcion = "Preview Lunch")
         )
@@ -183,8 +173,6 @@ class FakeTransactionDaoPreview : TransactionDao { // Renamed to avoid clash if 
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    // Create a fake repository with the fake DAO
     val fakeRepository = TransactionRepository(FakeTransactionDaoPreview())
-    // Pass the fake repository to the MainViewModel for the preview
     MainScreen(viewModel = MainViewModel(fakeRepository))
 }
