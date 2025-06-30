@@ -57,6 +57,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+// https://mvnrepository.com/artifact/androidx.room/room-runtime
+    implementation(libs.androidx.room.runtime)
+// https://mvnrepository.com/artifact/androidx.room/room-ktx
+    implementation(libs.androidx.room.ktx)
+// https://mvnrepository.com/artifact/androidx.room/room-common
+    implementation(libs.androidx.room.common)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
