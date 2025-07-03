@@ -1,15 +1,11 @@
 package com.example.proyecto.ui // Assuming MainScreen.kt is in ui package
 
-import AhorroScreen
-import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.* // Keep Material 3 imports
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +43,7 @@ val navItems = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(mainViewModel: MainViewModel, promocionesViewModel: PromocionesViewModel) {
     val navController = rememberNavController()
     Scaffold(
         bottomBar = {
@@ -55,7 +51,11 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
-            NavigationGraph(navController = navController, viewModel = viewModel)
+            NavigationGraph(
+                navController = navController,
+                mainViewModel = mainViewModel,
+                promocionesViewModel = promocionesViewModel
+            )
         }
     }
 }
@@ -91,72 +91,31 @@ fun BottomNavigationBar(navController: NavController) {
 }
 
 @Composable
-fun NavigationGraph(navController: NavHostController, viewModel: MainViewModel) {
+fun NavigationGraph(
+    navController: NavHostController,
+    mainViewModel: MainViewModel,
+    promocionesViewModel: PromocionesViewModel
+) {
     NavHost(navController = navController, startDestination = Screen.Inicio.route) {
         composable(Screen.Inicio.route) {
-            InicioScreen(viewModel = viewModel)
-        }
-        composable(Screen.Promociones.route) {
-            PromocionesScreen(viewModel = viewModel)
-        }
-        composable(Screen.Ahorro.route) {
             // AhorroScreen is now called from here, it will be imported
             // from com.example.proyecto.ui.AhorroScreen
-            AhorroScreen(viewModel = viewModel) // This should now correctly call the one in AhorroScreen.kt
+            ListadoScreen(viewModel = mainViewModel) // This should now correctly call the one in ListadoScreen.kt
         }
-    }
-}
-
-@Composable
-fun InicioScreen(viewModel: MainViewModel) {
-    val transactions by viewModel.allTransactions.collectAsState(initial = emptyList<Transaction>())
-
-    LaunchedEffect(transactions) {
-        Log.d("InicioScreen", "Transactions: ${transactions.joinToString { it.descripcion }}")
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Inicio Screen - Content will be here")
-        Text("Transactions Count: ${transactions.size}")
-        Button(onClick = {
-            viewModel.addTransaction(
-                tipo = "Ingreso",
-                categoria = "Salario",
-                fecha = Date().time,
-                monto = 2000.0,
-                descripcion = "Monthly Salary"
+        composable(Screen.Promociones.route) {
+            PromocionesScreen(
+                promocionesViewModel = promocionesViewModel,
+                mainViewModel = mainViewModel
             )
-        }) {
-            Text("Add Sample Ingreso")
         }
-        Button(onClick = {
-            viewModel.addTransaction(
-                tipo = "Gasto",
-                categoria = "Alimentos",
-                fecha = Date().time,
-                monto = 50.0,
-                descripcion = "Groceries"
-            )
-        }) {
-            Text("Add Sample Gasto")
+        composable(Screen.Ahorro.route) {
+            AhorroScreen(viewModel = mainViewModel)
         }
-    }
-}
-
-@Composable
-fun PromocionesScreen(viewModel: MainViewModel) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Promociones Screen - Content will be here")
     }
 }
 
 // --- Preview Setup ---
+// Preview will likely fail or need adjustment as it doesn't have PromocionesViewModel
 class FakeTransactionDaoPreview : TransactionDao {
     override suspend fun insert(transaction: Transaction) {}
     override suspend fun update(transaction: Transaction) {}
@@ -170,9 +129,20 @@ class FakeTransactionDaoPreview : TransactionDao {
     )
 }
 
+// Dummy PromocionesViewModel for preview purposes
+class FakePromocionesViewModel : PromocionesViewModel(
+    MockSearchServiceRepository(), // Using the mock from previous context
+    MockGeminiRecommendationServiceRepository() // Using the mock from previous context
+)
+
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
     val fakeRepository = TransactionRepository(FakeTransactionDaoPreview())
-    MainScreen(viewModel = MainViewModel(fakeRepository))
+    val mainViewModel = MainViewModel(fakeRepository)
+    val promocionesViewModel = FakePromocionesViewModel() // Use the fake for preview
+    MainScreen(
+        mainViewModel = mainViewModel,
+        promocionesViewModel = promocionesViewModel
+    )
 }

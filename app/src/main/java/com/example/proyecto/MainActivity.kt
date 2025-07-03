@@ -9,15 +9,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.proyecto.ui.MainScreen
-import com.example.proyecto.ui.MainViewModel // Explicitly import the MainViewModel from the ui package
+import com.example.proyecto.ui.MainViewModel
+import com.example.proyecto.ui.PromocionesViewModel
+import com.example.proyecto.ui.PromocionesViewModelFactory
+import com.example.proyecto.ui.MockSearchServiceRepository // Import mock
+import com.example.proyecto.ui.MockGeminiRecommendationServiceRepository // Import mock
 
 class MainActivity : ComponentActivity() {
 
     private val transactionRepository by lazy { (application as Wally).transactionRepository }
 
-    // Ensure the type is explicitly com.example.proyecto.ui.MainViewModel
-    private val mainViewModel: com.example.proyecto.ui.MainViewModel by viewModels {
+    private val mainViewModel: MainViewModel by viewModels {
         MainViewModelFactory(transactionRepository)
+    }
+
+    private val promocionesViewModel: PromocionesViewModel by viewModels {
+        // Instantiate and pass the mock repositories
+        PromocionesViewModelFactory(
+            searchService = MockSearchServiceRepository(),
+            geminiService = MockGeminiRecommendationServiceRepository()
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,7 +39,11 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(viewModel = mainViewModel)
+                    // Pass both ViewModels to MainScreen
+                    MainScreen(
+                        mainViewModel = mainViewModel,
+                        promocionesViewModel = promocionesViewModel
+                    )
                 }
             }
         }

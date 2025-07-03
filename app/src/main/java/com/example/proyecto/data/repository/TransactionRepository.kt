@@ -12,5 +12,13 @@ class TransactionRepository(private val transactionDao: TransactionDao) {
         transactionDao.insert(transaction)
     }
 
-    // We can add other methods like update, delete, getById later if needed
+    suspend fun updateTransaction(transaction: Transaction) {
+        transactionDao.update(transaction) // Assuming 'update' is the method name in TransactionDao
+    }
+
+    suspend fun deleteTransaction(transaction: Transaction) {
+        transactionDao.delete(transaction) // Assuming 'delete' is the method name in TransactionDao
+    }
+
+    // We can add other methods like getById later if needed
 }

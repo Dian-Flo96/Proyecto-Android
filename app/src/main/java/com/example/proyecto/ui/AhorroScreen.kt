@@ -1,496 +1,168 @@
-import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
+package com.example.proyecto.ui
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LeadingIconTab
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.proyecto.R
-import com.example.proyecto.data.model.Transaction
-import com.example.proyecto.ui.MainViewModel
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.Calendar
 import java.util.Locale
 
-enum class AhorroSubScreen {
-    Ingresos,
-    Gastos,
-    AddIngresoForm,
-    AddGastoForm
-}
-
-private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    return sdf.format(Date(timestamp))
-}
-
+// Helper to format currency (can be moved to a common utils file later)
 private fun formatCurrency(amount: Double): String {
-    val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val numberFormat =
+        NumberFormat.getCurrencyInstance(Locale("es", "PE")) // Adjust locale as needed
     return numberFormat.format(amount)
 }
 
+// Helper to get current month name (can be moved)
+private fun getCurrentMonthName(): String {
+    val calendar = Calendar.getInstance()
+    return calendar.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.getDefault())
+        ?: "Mes Actual"
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AhorroScreen(viewModel: MainViewModel) {
-    var currentSubScreen by remember { mutableStateOf(AhorroSubScreen.Ingresos) }
+    val budgetGoal by viewModel.budgetGoal.collectAsState()
+    val currentMonthIncome by viewModel.currentMonthIncome.collectAsState()
+    val currentMonthExpenses by viewModel.currentMonthExpenses.collectAsState()
+    val currentMonthNetSavings by viewModel.currentMonthNetSavings.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (currentSubScreen == AhorroSubScreen.Ingresos || currentSubScreen == AhorroSubScreen.Gastos) {
-            AhorroNavigationTabs(
-                selectedSubScreen = currentSubScreen,
-                onTabSelected = { newScreen ->
-                    currentSubScreen =
-                        if (newScreen == AhorroSubScreen.Ingresos) AhorroSubScreen.Ingresos else AhorroSubScreen.Gastos
-                }
-            )
-        }
+    var goalInputText by remember { mutableStateOf(budgetGoal.takeIf { it > 0 }?.toString() ?: "") }
+    val focusManager = LocalFocusManager.current
 
-        Box(modifier = Modifier
-            .weight(1f)
-            .padding(top = 8.dp)) {
-            when (currentSubScreen) {
-                AhorroSubScreen.Ingresos -> IngresosContentLayout(
-                    viewModel = viewModel,
-                    onNavigateToAddIngreso = { currentSubScreen = AhorroSubScreen.AddIngresoForm }
-                )
-
-                AhorroSubScreen.Gastos -> GastosContentLayout(
-                    viewModel = viewModel,
-                    onNavigateToAddGasto = { currentSubScreen = AhorroSubScreen.AddGastoForm }
-                )
-
-                AhorroSubScreen.AddIngresoForm -> AddIngresoFormLayout(
-                    viewModel = viewModel,
-                    onDismiss = { currentSubScreen = AhorroSubScreen.Ingresos }
-                )
-
-                AhorroSubScreen.AddGastoForm -> AddGastoFormLayout(
-                    viewModel = viewModel,
-                    onDismiss = { currentSubScreen = AhorroSubScreen.Gastos }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AhorroNavigationTabs(
-    selectedSubScreen: AhorroSubScreen,
-    onTabSelected: (AhorroSubScreen) -> Unit
-) {
-    val tabs = listOf(AhorroSubScreen.Ingresos, AhorroSubScreen.Gastos)
-
-    TabRow(
-        selectedTabIndex = tabs.indexOf(selectedSubScreen).coerceAtLeast(0)
-    ) {
-        tabs.forEach { subScreen ->
-            val title = if (subScreen == AhorroSubScreen.Ingresos) "INGRESOS" else "GASTOS"
-            val iconRes =
-                if (subScreen == AhorroSubScreen.Ingresos) R.drawable.baseline_add_24 else R.drawable.outline_add_shopping_cart_24
-            LeadingIconTab(
-                selected = selectedSubScreen == subScreen,
-                onClick = { onTabSelected(subScreen) },
-                text = { Text(title) },
-                icon = { Icon(painterResource(id = iconRes), contentDescription = title) }
-            )
-        }
-    }
-}
-
-@Composable
-fun IngresosContentLayout(viewModel: MainViewModel, onNavigateToAddIngreso: () -> Unit) {
-    val ingresos by viewModel.ingresos.collectAsState(initial = emptyList<Transaction>())
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Button(
-            onClick = onNavigateToAddIngreso,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-        ) {
-            Text("Agregar Ingreso")
-        }
-
-        if (ingresos.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No hay ingresos registrados.")
-            }
+    LaunchedEffect(budgetGoal) { // Update text field if goal changes externally
+        if (budgetGoal > 0) {
+            goalInputText = budgetGoal.toString()
         } else {
-            LazyColumn(
-                contentPadding = PaddingValues(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(ingresos, key = { it.id }) { ingreso ->
-                    IngresoCard(ingreso = ingreso)
-                }
-            }
+            goalInputText = ""
         }
-    }
-}
-
-@Composable
-fun IngresoCard(ingreso: Transaction) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = ingreso.descripcion,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Monto: ${formatCurrency(ingreso.monto)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Fecha: ${formatDate(ingreso.fecha)}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Text(
-                text = "Categoría: ${ingreso.categoria}",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
-}
-
-@Composable
-fun GastosContentLayout(viewModel: MainViewModel, onNavigateToAddGasto: () -> Unit) {
-    val gastos by viewModel.gastos.collectAsState(initial = emptyList<Transaction>())
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Button(
-            onClick = onNavigateToAddGasto,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-        ) {
-            Text("Agregar Gasto")
-        }
-
-        if (gastos.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No hay gastos registrados.")
-            }
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(gastos, key = { it.id }) { gasto ->
-                    IngresoCard(ingreso = gasto)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AddIngresoFormLayout(viewModel: MainViewModel, onDismiss: () -> Unit) {
-    var montoStr by remember { mutableStateOf("") }
-    var descripcion by remember { mutableStateOf("") }
-    val categoriasIngreso = listOf("Salario", "Regalo", "Venta", "Otro")
-    var selectedCategoria by remember { mutableStateOf(categoriasIngreso[0]) }
-    var isMontoError by remember { mutableStateOf(false) }
-    val context = LocalContext.current // Get context for Toast
-
-    fun validateMonto(text: String): Boolean {
-        return text.toDoubleOrNull() != null && text.toDouble() > 0
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-            .selectableGroup(),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            "Formulario para Agregar Ingreso",
+            text = "Meta de Ahorro Mensual (${getCurrentMonthName()})",
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        OutlinedTextField(
-            value = montoStr,
-            onValueChange = {
-                montoStr = it
-                isMontoError = !validateMonto(it)
-            },
-            label = { Text("Monto (S/.)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            isError = isMontoError,
-            modifier = Modifier.fillMaxWidth()
-        )
-        if (isMontoError) {
-            Text(
-                text = "Ingrese un monto válido y mayor a 0",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.align(Alignment.Start)
+        // Goal Setting
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            OutlinedTextField(
+                value = goalInputText,
+                onValueChange = { goalInputText = it },
+                label = { Text("Monto Objetivo S/.") },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = {
+                    goalInputText.toDoubleOrNull()?.let { viewModel.updateBudgetGoal(it) }
+                    focusManager.clearFocus()
+                }),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = {
+                goalInputText.toDoubleOrNull()?.let { viewModel.updateBudgetGoal(it) }
+                focusManager.clearFocus()
+            }) {
+                Text("Fijar")
+            }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Divider(modifier = Modifier.padding(vertical = 16.dp))
 
-        OutlinedTextField(
-            value = descripcion,
-            onValueChange = { descripcion = it },
-            label = { Text("Descripción") },
-            singleLine = false,
-            modifier = Modifier.fillMaxWidth()
+        // Progress Summary
+        Text(
+            "Resumen del Mes",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        SummaryRow("Meta de Ahorro:", formatCurrency(budgetGoal))
+        SummaryRow("Ingresos del Mes:", formatCurrency(currentMonthIncome))
+        SummaryRow("Gastos del Mes:", formatCurrency(currentMonthExpenses))
+        SummaryRow(
+            "Ahorro Neto del Mes:",
+            formatCurrency(currentMonthNetSavings),
+            isPositive = currentMonthNetSavings >= 0
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            "Categoría:",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.align(Alignment.Start)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        // Progress Bar and remaining
+        if (budgetGoal > 0) {
+            val progress = (currentMonthNetSavings / budgetGoal).toFloat().coerceIn(0f, 1f)
+            val remainingToGoal = budgetGoal - currentMonthNetSavings
 
-        Column(modifier = Modifier.align(Alignment.Start)) {
-            categoriasIngreso.forEach { categoria ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .selectable(
-                            selected = (categoria == selectedCategoria),
-                            onClick = { selectedCategoria = categoria },
-                            role = Role.RadioButton
-                        )
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = (categoria == selectedCategoria),
-                        onClick = null
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .padding(vertical = 8.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = if (currentMonthNetSavings >= budgetGoal) "¡Meta Alcanzada! (${
+                    formatCurrency(
+                        currentMonthNetSavings - budgetGoal
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = categoria)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f, fill = false))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(onClick = {
-                isMontoError = !validateMonto(montoStr)
-                if (!isMontoError && descripcion.isNotBlank()) {
-                    viewModel.addTransaction(
-                        tipo = "Ingreso",
-                        categoria = selectedCategoria,
-                        fecha = Date().time,
-                        monto = montoStr.toDouble(),
-                        descripcion = descripcion
-                    )
-                    onDismiss()
-                } else if (descripcion.isBlank()) {
-                    Toast.makeText(
-                        context,
-                        "La descripción no puede estar vacía",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }) {
-                Text("Guardar")
-            }
-            Button(onClick = onDismiss) {
-                Text("Cancelar")
-            }
+                } extra)"
+                else "${formatCurrency(remainingToGoal)} para alcanzar la meta.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        } else {
+            Text(
+                "Fija una meta de ahorro para ver tu progreso.",
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
     }
 }
 
 @Composable
-fun AddGastoFormLayout(viewModel: MainViewModel, onDismiss: () -> Unit) {
-    var montoStr by remember { mutableStateOf("") }
-    var descripcion by remember { mutableStateOf("") }
-    val categoriasGasto =
-        listOf("Alimentos", "Transporte", "Casa", "Ocio", "Salud", "Educación", "Otro")
-    var selectedCategoria by remember { mutableStateOf(categoriasGasto[0]) }
-    var isMontoError by remember { mutableStateOf(false) }
-    val context = LocalContext.current // Get context for Toast
-
-    fun validateMonto(text: String): Boolean {
-        return text.toDoubleOrNull() != null && text.toDouble() > 0
-    }
-
-    Column(
+fun SummaryRow(label: String, value: String, isPositive: Boolean? = null) {
+    Row(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-            .selectableGroup(),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
         Text(
-            "Formulario para Agregar Gasto",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        OutlinedTextField(
-            value = montoStr,
-            onValueChange = {
-                montoStr = it
-                isMontoError = !validateMonto(it)
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = when (isPositive) {
+                true -> MaterialTheme.colorScheme.primary // Or a specific green
+                false -> MaterialTheme.colorScheme.error
+                null -> LocalContentColor.current
             },
-            label = { Text("Monto (S/.)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            isError = isMontoError,
-            modifier = Modifier.fillMaxWidth()
+            textAlign = TextAlign.End
         )
-        if (isMontoError) {
-            Text(
-                text = "Ingrese un monto válido y mayor a 0",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.align(Alignment.Start)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = descripcion,
-            onValueChange = { descripcion = it },
-            label = { Text("Descripción") },
-            singleLine = false,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            "Categoría:",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.align(Alignment.Start)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Column(modifier = Modifier.align(Alignment.Start)) {
-            categoriasGasto.forEach { categoria ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .selectable(
-                            selected = (categoria == selectedCategoria),
-                            onClick = { selectedCategoria = categoria },
-                            role = Role.RadioButton
-                        )
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = (categoria == selectedCategoria),
-                        onClick = null
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = categoria)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f, fill = false))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(onClick = {
-                isMontoError = !validateMonto(montoStr)
-                if (!isMontoError && descripcion.isNotBlank()) {
-                    viewModel.addTransaction(
-                        tipo = "Gasto",
-                        categoria = selectedCategoria,
-                        fecha = Date().time,
-                        monto = montoStr.toDouble(),
-                        descripcion = descripcion
-                    )
-                    onDismiss()
-                } else if (descripcion.isBlank()) {
-                    Toast.makeText(
-                        context,
-                        "La descripción no puede estar vacía",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }) {
-                Text("Guardar")
-            }
-            Button(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
     }
 }
